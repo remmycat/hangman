@@ -6,3 +6,8 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+# To handle CLI commands in a neat way.
+# Can be replaced by clap, once version 3 is released.
+structopt = "0.3"
+
+rand = "0.8.4"
