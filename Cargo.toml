@@ -7,7 +7,6 @@ edition = "2018"
 
 [dependencies]
 # To handle CLI commands in a neat way.
-# Can be replaced by clap, once version 3 is released.
-structopt = "0.3"
+clap = "3.0.0-beta.4"
 
 rand = "0.8.4"
