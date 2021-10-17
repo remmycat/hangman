@@ -9,7 +9,7 @@ use std::collections::HashSet;
 use std::process::exit;
 
 fn format_guesses(word: &str, guessed: &HashSet<char>) -> String {
-	let letters = ('A'..'Z').filter_map(|c| {
+	let letters = ('A'..='Z').filter_map(|c| {
 		let lower = c.clone().to_ascii_lowercase();
 		let lower_word = word.to_ascii_lowercase();
 		if guessed.contains(&lower) {
