@@ -43,23 +43,6 @@ fn format_word(word: &str, guessed: &HashSet<char>) -> String {
 	withspaces.collect()
 }
 
-fn render_game_end(score: &f64, rounds: &u32, reason: &EndFeedback) {
-	match reason {
-		EndFeedback::NoWordsFound => {
-			println!("Unfortunately there were no words matching your criteria :(");
-			return;
-		}
-		EndFeedback::NoMoreWordsFound => {
-			println!("Unfortunately we ran out of words matching your criteria! :(");
-		}
-		EndFeedback::ManuallyEnded => {
-			println!("Goodbye then! <3")
-		}
-	}
-	println!("Rounds played:  {}", rounds);
-	println!("Final score:    {:.0}", score);
-}
-
 fn get_guess() -> crossterm::Result<char> {
 	loop {
 		// `read()` blocks until an `Event` is available
@@ -147,7 +130,19 @@ pub fn render_game(state: GameState) -> crossterm::Result<()> {
 
 	match &state.scene {
 		GameScene::GameEnd { feedback } => {
-			render_game_end(&state.score, &state.rounds_played, feedback);
+			match feedback {
+				EndFeedback::NoWordsFound => {
+					println!("Unfortunately there were no words matching your criteria :(");
+				}
+				EndFeedback::NoMoreWordsFound => {
+					println!("Unfortunately we ran out of words matching your criteria! :(");
+				}
+				EndFeedback::ManuallyEnded => {
+					println!("Goodbye then! <3");
+				}
+			}
+			println!("Rounds played:  {}", state.rounds_played);
+			println!("Final score:    {:.0}", state.score);
 			Ok(())
 		}
 		GameScene::Init => {

@@ -12,6 +12,7 @@ pub fn get_filtered_word_list(
 ) -> Vec<&'static str> {
 	let filtered: Vec<&str> = GIANT_CROSSWORD_WORD_LIST
 		.lines()
+		.filter(|line| !line.starts_with("# "))
 		.filter_map(|line| {
 			// 1. Parse line of form phrase::score into those values
 
