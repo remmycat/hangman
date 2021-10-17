@@ -1,8 +1,6 @@
 use clap::Clap;
 
-pub mod errors;
-
-use errors::ValidationError;
+use crate::errors::ValidationError;
 
 pub trait Validatable {
 	fn validate(&self) -> Result<(), ValidationError>;
@@ -60,6 +58,10 @@ pub struct RandomGame {
 	/// Minimum "word coolness score" (0-100)
 	#[clap(short = 'S', long, default_value = "100")]
 	pub max_score: u8,
+
+	/// TODO make better
+	#[clap(short = 'W', long, default_value = "6")]
+	pub max_wrong_guesses: u8,
 }
 
 impl Validatable for RandomGame {
@@ -88,9 +90,9 @@ impl Validatable for RandomGame {
 
 #[derive(Clap, Debug)]
 pub struct ManualGame {
-	/// The word you want someone to guess
-	#[clap()]
-	pub word: String,
+	/// TODO make better
+	#[clap(short = 'W', long, default_value = "6")]
+	pub max_wrong_guesses: u8,
 }
 impl Validatable for ManualGame {
 	fn validate(&self) -> Result<(), ValidationError> {

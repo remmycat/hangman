@@ -1,32 +1,22 @@
+mod errors;
+mod game_state;
 mod validation;
 mod word_list;
 
-use word_list::get_filtered_word_list;
+use game_state::GameState;
 
-use validation::{GameMode, HangmanCliOptions, ManualGame, RandomGame, Validatable};
+use validation::{HangmanCliOptions, Validatable};
 
 use clap::{Clap, Error as ClapError};
 
 use std::process::exit;
 
+use crate::game_state::render::render_game;
+
 fn hangman_game(args: HangmanCliOptions) {
-	match args.mode {
-		GameMode::Manual(ManualGame { word }) => {
-			println!("Mode: [Manual] - \"{}\"", word);
-		}
-		GameMode::Random(RandomGame {
-			min_length,
-			max_length,
-			min_score,
-			max_score,
-		}) => {
-			println!("Mode: [Random]");
-			let mut words = get_filtered_word_list(min_length, max_length, min_score, max_score);
-			println!("Found {} words", words.len());
-			words.truncate(10);
-			println!("Words sample: {:#?}", words);
-		}
-	}
+	let state = GameState::new(args);
+	// TODO: term Errors
+	render_game(state).unwrap();
 }
 
 fn main() {
