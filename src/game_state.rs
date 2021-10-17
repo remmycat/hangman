@@ -1,5 +1,3 @@
-pub mod render;
-
 use crate::{
 	validation::{GameMode, HangmanCliOptions, ManualGame, RandomGame},
 	word_list::get_filtered_word_list,

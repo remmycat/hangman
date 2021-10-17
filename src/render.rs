@@ -1,6 +1,6 @@
+use crate::game_state::{EndFeedback, GameScene, GameState, GuessFeedback};
 use crate::validation::{GameMode, ManualGame, RandomGame};
 
-use super::{EndFeedback, GameScene, GameState, GuessFeedback};
 use ansi_term::Colour::{Cyan, Red};
 use crossterm::event::{read, Event, KeyCode, KeyEvent, KeyModifiers};
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};

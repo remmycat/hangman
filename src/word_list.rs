@@ -2,7 +2,7 @@ use rand::seq::SliceRandom;
 
 use std::convert::TryInto;
 
-static GIANT_CROSSWORD_WORD_LIST: &str = include_str!("../../assets/crossword-phrases.txt");
+static GIANT_CROSSWORD_WORD_LIST: &str = include_str!("../assets/crossword-phrases.txt");
 
 pub fn get_filtered_word_list(
 	min_length: u8,

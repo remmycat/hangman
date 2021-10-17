@@ -1,5 +1,6 @@
 mod errors;
 mod game_state;
+mod render;
 mod validation;
 mod word_list;
 
@@ -11,7 +12,7 @@ use clap::{Clap, Error as ClapError};
 
 use std::process::exit;
 
-use crate::game_state::render::render_game;
+use render::render_game;
 
 fn hangman_game(args: HangmanCliOptions) {
 	let state = GameState::new(args);
