@@ -1,3 +1,4 @@
+use crate::art;
 use crate::game_state::{EndFeedback, GameScene, GameState, GuessFeedback};
 use crate::input::{confirm_enter, confirm_yn, get_char, get_word};
 use crate::reset_screen;
@@ -180,10 +181,10 @@ pub fn render_game(state: GameState) -> crossterm::Result<()> {
 			format_word_and_guesses(word, letters_guessed);
 			println!();
 			if *won {
-				println!("You won!");
+				println!("{}", art::YOU_WON);
 				println!("Phrase is:     {}", word);
 			} else {
-				println!("You lost!");
+				println!("{}", art::THE_HANGED_MAN);
 				println!("Phrase was:    {}", word);
 			}
 			println!();

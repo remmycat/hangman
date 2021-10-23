@@ -1,3 +1,4 @@
+mod art;
 mod errors;
 mod game_state;
 mod input;
