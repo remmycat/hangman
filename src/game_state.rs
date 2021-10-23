@@ -12,7 +12,7 @@ pub enum GuessFeedback {
 	Correct(char),
 	Wrong(char),
 	AlreadyTried(char),
-	BadChar(char),
+	BadChar(Option<char>),
 }
 
 #[derive(Debug)]
@@ -29,6 +29,11 @@ pub enum GameScene {
 		word: String,
 		letters_guessed: HashSet<char>,
 		feedback: GuessFeedback,
+	},
+	ValidGuess {
+		word: String,
+		letters_guessed: HashSet<char>,
+		guess: char,
 	},
 	RoundEnd {
 		word: String,
@@ -175,12 +180,57 @@ impl GameState {
 		}
 	}
 
-	pub fn make_guess(self, guess: char) -> GameState {
+	pub fn input_guess(self, guess_input: Option<char>) -> GameState {
 		match self.scene {
 			GameScene::AwaitingGuess {
 				word,
-				mut letters_guessed,
+				letters_guessed,
 				..
+			} => match guess_input {
+				Some(guess)
+					if letters_guessed
+						.get(&(guess.clone().to_ascii_lowercase()))
+						.is_some() =>
+				{
+					GameState {
+						scene: GameScene::AwaitingGuess {
+							word,
+							letters_guessed,
+							feedback: GuessFeedback::AlreadyTried(guess),
+						},
+						..self
+					}
+				}
+				Some(guess) if guess.is_ascii_alphabetic() => GameState {
+					scene: GameScene::ValidGuess {
+						word,
+						letters_guessed,
+						guess: guess.to_ascii_uppercase(),
+					},
+					..self
+				},
+				_ => GameState {
+					scene: GameScene::AwaitingGuess {
+						word,
+						letters_guessed,
+						feedback: GuessFeedback::BadChar(guess_input),
+					},
+					..self
+				},
+			},
+			scene => panic!(
+				"Invalid scene transition input_guess executed on scene {:#?}",
+				scene
+			),
+		}
+	}
+
+	pub fn make_guess(self) -> GameState {
+		match self.scene {
+			GameScene::ValidGuess {
+				word,
+				mut letters_guessed,
+				guess,
 			} => {
 				let guess = guess.to_ascii_lowercase();
 				let word_letters: HashSet<char> = word
@@ -194,7 +244,6 @@ impl GameState {
 					})
 					.collect();
 
-				let guess_in_guessed = letters_guessed.get(&guess).is_some();
 				let guess_in_word = word_letters.get(&guess).is_some();
 				let wrong_guesses =
 					letters_guessed.len() - letters_guessed.intersection(&word_letters).count();
@@ -208,30 +257,10 @@ impl GameState {
 					}) => max_wrong_guesses,
 				};
 
-				if !guess.is_ascii_alphabetic() {
-					// Guess was letter other than A-z
-					GameState {
-						scene: GameScene::AwaitingGuess {
-							word,
-							letters_guessed,
-							feedback: GuessFeedback::BadChar(guess),
-						},
-						..self
-					}
-				} else if guess_in_guessed {
-					// This letter was already guessed!
-					GameState {
-						scene: GameScene::AwaitingGuess {
-							word,
-							letters_guessed,
-							feedback: GuessFeedback::AlreadyTried(guess),
-						},
-						..self
-					}
-				} else if guess_in_word {
-					// This letter is correct!
-					letters_guessed.insert(guess);
+				letters_guessed.insert(guess);
 
+				if guess_in_word {
+					// This letter is correct!
 					if letters_guessed.intersection(&word_letters).count() == word_letters.len() {
 						// Won!
 						let left_guesses =
@@ -255,15 +284,13 @@ impl GameState {
 							scene: GameScene::AwaitingGuess {
 								word,
 								letters_guessed,
-								feedback: GuessFeedback::Correct(guess),
+								feedback: GuessFeedback::Correct(guess.to_ascii_uppercase()),
 							},
 							..self
 						}
 					}
 				} else {
 					// Wrong guess!
-					letters_guessed.insert(guess);
-
 					// Assumption: u8 can always fit into usize
 					if wrong_guesses + 1 > max_wrong_guesses.into() {
 						let mut played_words = self.played_words;
@@ -285,7 +312,7 @@ impl GameState {
 							scene: GameScene::AwaitingGuess {
 								word,
 								letters_guessed,
-								feedback: GuessFeedback::Wrong(guess),
+								feedback: GuessFeedback::Wrong(guess.to_ascii_uppercase()),
 							},
 							..self
 						}

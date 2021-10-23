@@ -11,10 +11,8 @@ clap = "3.0.0-beta.4"
 
 rand = "0.8.4"
 
-rpassword = "5.0"
-
 itertools = "0.10.0"
 
-ansi_term = "0.11"
-
 crossterm = "0.21.0"
+
+ctrlc = { version = "3.2", features = ["termination"] }

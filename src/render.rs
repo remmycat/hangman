@@ -1,32 +1,35 @@
 use crate::game_state::{EndFeedback, GameScene, GameState, GuessFeedback};
+use crate::input::{confirm_enter, confirm_yn, get_char, get_word};
+use crate::reset_screen;
 use crate::validation::{GameMode, ManualGame, RandomGame};
 
-use ansi_term::Colour::{Cyan, Red};
-use crossterm::event::{read, Event, KeyCode, KeyEvent, KeyModifiers};
-use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
+use crossterm::style::Stylize;
 use itertools::Itertools;
 use std::collections::HashSet;
-use std::process::exit;
+use std::io::{stdout, Write};
+use std::thread;
+use std::time::Duration;
 
 fn format_guesses(word: &str, guessed: &HashSet<char>) -> String {
 	let letters = ('A'..='Z').filter_map(|c| {
 		let lower = c.clone().to_ascii_lowercase();
 		let lower_word = word.to_ascii_lowercase();
+
 		if guessed.contains(&lower) {
 			if lower_word.contains(&lower.to_string()) {
-				Some(Cyan.paint(c.to_string()).to_string())
+				Some(c.to_string().dark_cyan().to_string())
 			} else {
-				Some(Red.paint(c.to_string()).to_string())
+				Some(c.to_string().dim().to_string())
 			}
 		} else {
 			None
 		}
 	});
 
-	Itertools::intersperse(letters, " ".to_string()).collect()
+	letters.collect()
 }
 
-fn format_word(word: &str, guessed: &HashSet<char>) -> String {
+pub fn format_word(word: &str, guessed: &HashSet<char>, insert_spaces: bool) -> String {
 	let chars = word.chars().map(|char| {
 		if !char.is_ascii_alphabetic() {
 			return char;
@@ -39,97 +42,32 @@ fn format_word(word: &str, guessed: &HashSet<char>) -> String {
 		}
 	});
 
-	let withspaces = Itertools::intersperse(chars, ' ');
-	withspaces.collect()
-}
-
-fn get_guess() -> crossterm::Result<char> {
-	loop {
-		// `read()` blocks until an `Event` is available
-		// TODO
-		enable_raw_mode()?;
-		let char = match read()? {
-			Event::Key(KeyEvent {
-				code: KeyCode::Char('c'),
-				modifiers: KeyModifiers::CONTROL,
-			}) => {
-				disable_raw_mode()?;
-				exit(1)
-			}
-			Event::Key(KeyEvent {
-				code: KeyCode::Char(c),
-				..
-			}) => Some(c),
-			_ => None,
-		};
-		disable_raw_mode()?;
-
-		match char {
-			Some(char) if char.is_ascii_alphabetic() => return Ok(char.to_ascii_lowercase()),
-			Some(_) => {
-				println!("Please enter a letter (A-Z)")
-			}
-			None => (),
-		}
+	if !insert_spaces {
+		chars.collect()
+	} else {
+		let withspaces = Itertools::intersperse(chars, ' ');
+		withspaces.collect()
 	}
 }
 
-fn confirm_yn() -> crossterm::Result<bool> {
-	loop {
-		// `read()` blocks until an `Event` is available
-		// TODO
-		enable_raw_mode()?;
-		let char = match read()? {
-			Event::Key(KeyEvent {
-				code: KeyCode::Char('c'),
-				modifiers: KeyModifiers::CONTROL,
-			}) => {
-				disable_raw_mode()?;
-				exit(1)
-			}
-			Event::Key(KeyEvent {
-				code: KeyCode::Enter,
-				..
-			}) => Some('y'),
-			Event::Key(KeyEvent {
-				code: KeyCode::Esc, ..
-			}) => Some('n'),
-			Event::Key(KeyEvent {
-				code: KeyCode::Char(c),
-				..
-			}) => Some(c),
-			_ => None,
-		};
-		disable_raw_mode()?;
+const GUESS_PROMPT: &str = "> ";
 
-		match char {
-			Some('y') => return Ok(true),
-			Some('n') => return Ok(false),
-			Some(_) => {
-				println!("Please enter 'y' for yes, or 'n' for no")
-			}
-			None => (),
-		}
-	}
+fn print_last_guess(last_guess: &char) {
+	println!("{}{}", GUESS_PROMPT, last_guess);
+}
+
+fn format_word_and_guesses(word: &str, guessed: &HashSet<char>) {
+	println!();
+	println!("Phrase:      {}", format_word(word, guessed, true));
+	println!();
+	println!("Guesses:     {}", format_guesses(word, guessed));
+	println!();
 }
 
 pub fn render_game(state: GameState) -> crossterm::Result<()> {
-	// let test_word = "\"Some phrase, I said, maybe?\"".to_string();
-	// let mut guessed = HashSet::new();
-	// guessed.insert('s');
-	// guessed.insert('e');
-	// guessed.insert('d');
-	// guessed.insert('y');
-	// guessed.insert('x');
-
-	// println!(
-	// 	"Phrase:  {}",
-	// 	format_word(test_word.clone(), guessed.clone())
-	// );
-	// println!("\nGuesses: {}", format_guesses(test_word, guessed));
-
 	match &state.scene {
 		GameScene::GameEnd { feedback } => {
+			reset_screen()?;
 			match feedback {
 				EndFeedback::NoWordsFound => {
 					println!("Unfortunately there were no words matching your criteria :(");
@@ -146,29 +84,35 @@ pub fn render_game(state: GameState) -> crossterm::Result<()> {
 			Ok(())
 		}
 		GameScene::Init => {
+			reset_screen()?;
 			let is_first_game = state.rounds_played == 0;
+
 			match &state.args.mode {
 				GameMode::Manual(ManualGame { .. }) => {
 					if is_first_game {
-						println!("Manual mode");
+						println!("{}", "Manual mode".bold());
 					} else {
 						println!("Time for another round!");
 					}
-					println!("Go enter your word below:");
-					let word = rpassword::prompt_password_stdout(">> ").unwrap();
+					println!();
+					println!("Enter your word or phrase:");
+					let word = get_word("> ")?;
 					render_game(state.start_manual_game(word))
 				}
 				GameMode::Random(RandomGame { .. }) => {
 					let unplayed_words = &state.unplayed_words;
 					if is_first_game {
-						println!("Random mode");
+						println!("{}", "Random mode".bold());
 						println!(
-							"{} words matching your criteria were found",
+							"{} words and phrases matching your criteria were found",
 							unplayed_words.len()
 						);
 					} else {
 						println!("Time for another round!");
 					}
+					println!();
+					println!("Press enter to start");
+					confirm_enter()?;
 
 					render_game(state.start_random_game())
 				}
@@ -181,39 +125,50 @@ pub fn render_game(state: GameState) -> crossterm::Result<()> {
 		} => {
 			match feedback {
 				GuessFeedback::LetsGo => {
-					println!();
+					reset_screen()?;
 					println!("Let's hang some men!");
-					println!();
+					format_word_and_guesses(word, letters_guessed);
+				}
+				GuessFeedback::Correct(guess) => {
+					reset_screen()?;
+					print_last_guess(guess);
+					println!("{}", "Correct".dark_green().bold());
+					format_word_and_guesses(word, letters_guessed);
+				}
+				GuessFeedback::Wrong(guess) => {
+					reset_screen()?;
+					print_last_guess(guess);
+					println!("{}", "Wrong!".dark_red().bold());
+					format_word_and_guesses(word, letters_guessed);
 				}
 				GuessFeedback::AlreadyTried(guess) => {
 					println!("You already tried '{}'!", guess);
 				}
-				GuessFeedback::Correct(_) => {
-					println!("Correct!");
-				}
-				GuessFeedback::Wrong(_) => {
-					println!("Wrong!");
-				}
 				GuessFeedback::BadChar(_) => {
-					println!("You entered something that wasn't a letter")
+					println!("Please enter a letter (A - Z)")
 				}
 			}
-			println!();
-			println!("Phrase:      {}", format_word(word, letters_guessed));
-			println!();
-			println!("Guesses:     {}", format_guesses(word, letters_guessed));
-			println!();
 
-			let guess = get_guess()?;
+			let guess = get_char(GUESS_PROMPT)?;
+			render_game(state.input_guess(guess))
+		}
+		GameScene::ValidGuess {
+			guess,
+			word,
+			letters_guessed,
+		} => {
+			for n in 0..=3 {
+				reset_screen()?;
+				print_last_guess(guess);
+				print!("Trying {}", guess);
+				print!("{}", ".".repeat(n));
+				stdout().flush().unwrap();
+				println!();
+				format_word_and_guesses(word, letters_guessed);
+				thread::sleep(Duration::from_millis(100));
+			}
 
-			println!("\n\n\n\n\n\n");
-			render_game(state.make_guess(guess))
-			// if confirm_yn()? {
-			// 	render_game(state.confirm_word())
-			// } else {
-			// 	println!("Alright then, pick another word.");
-			// 	render_game(state.get_new_word())
-			// }
+			render_game(state.make_guess())
 		}
 		GameScene::RoundEnd {
 			word,
@@ -221,12 +176,9 @@ pub fn render_game(state: GameState) -> crossterm::Result<()> {
 			round_score,
 			letters_guessed,
 		} => {
+			reset_screen()?;
+			format_word_and_guesses(word, letters_guessed);
 			println!();
-			println!("Phrase:      {}", format_word(word, letters_guessed));
-			println!();
-			println!("Guesses:     {}", format_guesses(word, letters_guessed));
-			println!();
-			println!("\n\n\n\n\n\n");
 			if *won {
 				println!("You won!");
 				println!("Phrase is:     {}", word);
@@ -239,7 +191,7 @@ pub fn render_game(state: GameState) -> crossterm::Result<()> {
 			println!("Total score:   {}", state.score);
 			println!();
 			println!("Play another round? [y]es / [n]o");
-			let yes = confirm_yn()?;
+			let yes = confirm_yn("> ")?;
 
 			if yes {
 				render_game(state.new_round())
