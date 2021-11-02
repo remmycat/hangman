@@ -3,7 +3,6 @@ use crate::{
 	word_list::get_filtered_word_list,
 };
 use std::collections::HashSet;
-use std::convert::TryFrom;
 use std::fmt::{self, Debug, Formatter};
 
 #[derive(Debug)]
