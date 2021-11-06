@@ -1,2 +1,6 @@
+# hangman
 
-Credits: Bundled-in list of common english words comes from a deduplicated free sample of common lemmas by https://www.wordfrequency.info/
+Just an interactive hangman game I programmed to learn a little bit of rust.
+## Credits
+
+Bundled-in list of Words is a filtered version of Peter Broda's crossword wordlist https://peterbroda.me/crosswords/wordlist/
